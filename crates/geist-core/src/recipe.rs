@@ -1,8 +1,3 @@
-#![allow(
-    dead_code,
-    reason = "recipe fields are consumed by the renderer in the next task"
-)]
-
 use crate::Cue;
 
 #[derive(Debug, Clone, Copy)]
