@@ -1,0 +1,14 @@
+[package]
+name = "geist-wasm"
+version = "0.1.0"
+edition = "2024"
+description = "WASM boundary for Geist interface sounds"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+geist-core = { path = "../../crates/geist-core" }
+wasm-bindgen = "0.2"
