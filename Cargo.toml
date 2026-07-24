@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/geist-core"]
+resolver = "2"
