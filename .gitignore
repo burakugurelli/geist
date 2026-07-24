@@ -1,0 +1,9 @@
+/.worktrees/
+.DS_Store
+/target/
+/web/demo-dist/
+/web/dist/
+/web/generated/
+/web/node_modules/
+/docs/superpowers/
+/lightweight_interface_sounds_project.md
