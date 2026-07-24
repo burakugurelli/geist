@@ -1,4 +1,5 @@
 mod cue;
+mod dsp;
 mod recipe;
 mod render;
 
