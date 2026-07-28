@@ -1,0 +1,22 @@
+{
+  "name": "@geist/interface-sounds",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "build:wasm": "wasm-pack build ../bindings/wasm --target web --out-dir ../../web/generated --out-name geist_wasm",
+    "build:web": "tsc -p tsconfig.build.json",
+    "build:demo": "vite build --config vite.config.ts",
+    "build": "npm run build:wasm && npm run build:web && npm run build:demo",
+    "dev": "npm run build:wasm && vite --config vite.config.ts",
+    "test": "npm run build:wasm && vitest run",
+    "typecheck": "npm run build:wasm && tsc -p tsconfig.json"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vite": "8.1.5",
+    "vitest": "4.1.10"
+  }
+}

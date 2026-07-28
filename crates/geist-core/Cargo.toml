@@ -1,0 +1,9 @@
+[package]
+name = "geist-core"
+version = "0.1.0"
+edition = "2024"
+description = "Dependency-free synthesis core for Geist interface sounds"
+license = "MIT"
+publish = false
+
+[dependencies]
