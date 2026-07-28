@@ -82,7 +82,7 @@ export class Player {
       context.sampleRate,
     );
     const buffer = context.createBuffer(1, samples.length, context.sampleRate);
-    buffer.copyToChannel(new Float32Array(samples), 0);
+    buffer.getChannelData(0).set(samples);
     return buffer;
   }
 }

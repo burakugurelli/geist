@@ -3,43 +3,63 @@ import { describe, expect, it, vi } from "vitest";
 import type { PcmRenderer } from "../src/renderer.js";
 import { Player } from "../src/player.js";
 
+class FakeAudioBuffer {
+  readonly channelData: Float32Array<ArrayBuffer>;
+  readonly getChannelData = vi.fn(
+    (_channelNumber: number): Float32Array<ArrayBuffer> => this.channelData,
+  );
+
+  constructor(length: number) {
+    this.channelData = new Float32Array(length);
+  }
+}
+
+class FakeAudioBufferSource {
+  buffer: AudioBuffer | null = null;
+  readonly connect = vi.fn<(destination: AudioNode) => AudioNode>();
+  readonly start = vi.fn<() => void>();
+}
+
 class FakeAudioContext {
   state: AudioContextState = "running";
   readonly destination = {} as AudioDestinationNode;
   readonly resume = vi.fn(async () => {
     this.state = "running";
   });
-  readonly copiedSamples: Float32Array[] = [];
-  sourceStarts = 0;
-  buffersCreated = 0;
-  sourcesCreated = 0;
+  readonly buffers: FakeAudioBuffer[] = [];
+  readonly sources: FakeAudioBufferSource[] = [];
+  readonly createBuffer = vi.fn(
+    (
+      _numberOfChannels: number,
+      length: number,
+      _sampleRate: number,
+    ): AudioBuffer => {
+      const buffer = new FakeAudioBuffer(length);
+      this.buffers.push(buffer);
+      return buffer as unknown as AudioBuffer;
+    },
+  );
+  readonly createBufferSource = vi.fn((): AudioBufferSourceNode => {
+    const source = new FakeAudioBufferSource();
+    this.sources.push(source);
+    return source as unknown as AudioBufferSourceNode;
+  });
 
   constructor(readonly sampleRate: number) {}
 
-  createBuffer(
-    _channels: number,
-    length: number,
-    _sampleRate: number,
-  ): AudioBuffer {
-    this.buffersCreated += 1;
-    return {
-      copyToChannel: (samples: Float32Array) => {
-        expect(samples).toHaveLength(length);
-        this.copiedSamples.push(samples);
-      },
-    } as unknown as AudioBuffer;
+  get sourceStarts(): number {
+    return this.sources.reduce(
+      (count, source) => count + source.start.mock.calls.length,
+      0,
+    );
   }
 
-  createBufferSource(): AudioBufferSourceNode {
-    this.sourcesCreated += 1;
-    const context = this;
-    return {
-      buffer: null,
-      connect: vi.fn(),
-      start() {
-        context.sourceStarts += 1;
-      },
-    } as unknown as AudioBufferSourceNode;
+  get buffersCreated(): number {
+    return this.buffers.length;
+  }
+
+  get sourcesCreated(): number {
+    return this.sources.length;
   }
 }
 
@@ -77,6 +97,40 @@ describe("Player", () => {
     expect(renderer.render).toHaveBeenCalledTimes(1);
     expect(context.buffersCreated).toBe(1);
     expect(context.sourcesCreated).toBe(2);
+  });
+
+  it("routes rendered PCM through a mono buffer to the destination", async () => {
+    const samples = new Float32Array([0, 0.25, -0.125]);
+    const renderer = {
+      render: vi.fn(async () => samples),
+    } satisfies PcmRenderer;
+    const context = new FakeAudioContext(48_000);
+    const player = new Player({
+      renderer,
+      createContext: () => context as unknown as AudioContext,
+    });
+
+    player.play("press");
+    await vi.waitFor(() => expect(context.sourceStarts).toBe(1));
+
+    expect(context.createBuffer).toHaveBeenCalledWith(
+      1,
+      samples.length,
+      context.sampleRate,
+    );
+    expect(context.createBuffer).toHaveBeenCalledOnce();
+    expect(context.buffers).toHaveLength(1);
+    expect(context.sources).toHaveLength(1);
+
+    const buffer = context.buffers[0]!;
+    const source = context.sources[0]!;
+    expect(buffer.getChannelData).toHaveBeenCalledWith(0);
+    expect(buffer.getChannelData).toHaveBeenCalledOnce();
+    expect(buffer.channelData).toEqual(samples);
+    expect(source.buffer).toBe(buffer);
+    expect(source.connect).toHaveBeenCalledWith(context.destination);
+    expect(source.connect).toHaveBeenCalledOnce();
+    expect(source.start).toHaveBeenCalledOnce();
   });
 
   it("shares an in-flight render between concurrent calls", async () => {
